@@ -39,11 +39,9 @@ try {
     }
  })
 
- const token = await sign({ id: user.id }, c.env.JWT_SECRET)
+ const jwt = await sign({ id: user.id }, c.env.JWT_SECRET)
 
-  return c.json({
-    jwt:token
-  })
+  return c.text(jwt)
 }
 
 catch (e) {
@@ -81,9 +79,7 @@ userRouter.post('/signin', async (c) => {
 		return c.json({ error: "Incorrect ceredentials" });
 	}
 
-  const token = await sign({ id: user.id }, c.env.JWT_SECRET);
-	return c.json({ 
-  jwt: token 
-});
+  const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
+	return c.text(jwt)
   
 })

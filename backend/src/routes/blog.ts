@@ -15,11 +15,15 @@ export const blogRouter = new Hono<{
 }>();
 
 blogRouter.use('/*', async (c, next) => {
+  
     const authHeader = c.req.header("Authorization")||"";
-
+    
+  
     try {
-      const token = authHeader?.split(' ')[1];
-    const user =await verify(token, c.env.JWT_SECRET) as { id: string };
+       
+
+
+    const user =await verify(authHeader, c.env.JWT_SECRET) as { id: string };
     if(user) {
         c.set('userId', user.id);
         await next();
@@ -41,33 +45,48 @@ blogRouter.use('/*', async (c, next) => {
 
 })
 
-blogRouter.post('/',async (c) => {
+blogRouter.post('/', async (c) => {
     const body = await c.req.json();
     const authorId = c.get('userId');
     const prisma = new PrismaClient({
-    datasourceUrl: c.env.DATABASE_URL,
-}).$extends(withAccelerate())
+        datasourceUrl: c.env.DATABASE_URL,
+    }).$extends(withAccelerate());
 
-const { success } = createBlogSchema.safeParse(body);
-if(!success) {
-    c.status(411);
-    return c.json({
-        error: "Invalid inputs for the blog, can't be created"
-    })
-}
-
-const blog = await prisma.blog.create({
-    data: {
-        title: body.title,
-        content: body.content,
-        authorId: authorId
+    const { success } = createBlogSchema.safeParse(body);
+    if (!success) {
+        c.status(411);
+        return c.json({
+            error: "Invalid inputs for the blog, can't be created"
+        });
     }
-})
 
-  return c.json({
-    id: blog.id
-  })
-})
+    
+    const user = await prisma.user.findUnique({
+        where: { id: authorId },
+        select: { name: true }
+    });
+
+    if (!user || !user.name) {
+        c.status(404);
+        return c.json({ message: "User not found or name missing" });
+    }
+
+   
+    const blog = await prisma.blog.create({
+        data: {
+            title: body.title,
+            content: body.content,
+            authorId: authorId,
+            authorName: user.name,
+            published: true
+        }
+    });
+
+    return c.json({
+        id: blog.id
+    });
+});
+
 
 blogRouter.put('/', async (c) => {
    const body = await c.req.json();
@@ -122,7 +141,7 @@ try {
         id: id
     }
 })
-
+  
   return c.json({
     blog
   })
